@@ -180,7 +180,9 @@ function App() {
     const audio = audioRef.current
     if (!audio) return
 
-    audio.currentTime = Math.max(0, Math.min(audio.currentTime + seconds, duration))
+    const newTime = Math.max(0, Math.min(audio.currentTime + seconds, duration))
+    audio.currentTime = newTime
+    setCurrentTime(newTime)
   }
 
   if (showDownloadPage) {
