@@ -13,6 +13,7 @@ function App() {
   const [downloadProgress, setDownloadProgress] = useState(0)
   const [showDownloadPage, setShowDownloadPage] = useState(false)
   const [showLyrics, setShowLyrics] = useState(false)
+  const [currentSong, setCurrentSong] = useState<'v1' | 'v2'>('v2')
   const rotationRef = useRef(0)
   const animationRef = useRef<number | null>(null)
 
@@ -57,7 +58,8 @@ function App() {
     setDownloadProgress(0)
 
     try {
-      const response = await fetch('/music/pj.mp3')
+      const songPath = currentSong === 'v1' ? '/music/pjV1.mp3' : '/music/pjV2.mp3'
+      const response = await fetch(songPath)
       const reader = response.body?.getReader()
       const contentLength = +(response.headers.get('Content-Length') || 0)
 
@@ -84,7 +86,7 @@ function App() {
       const url = URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.href = url
-      link.download = 'ป๋าเจโคตรเฟี้ยว.mp3'
+      link.download = currentSong === 'v1' ? 'ป๋าเจโคตรเฟี้ยว-V1.mp3' : 'ป๋าเจโคตรเฟี้ยว-V2.mp3'
       link.click()
       URL.revokeObjectURL(url)
 
@@ -185,69 +187,40 @@ function App() {
     setCurrentTime(newTime)
   }
 
-  if (showDownloadPage) {
-    return (
-      <div className="app">
-        <div className="background-glow"></div>
-        <div className="music-player download-page">
-          <button className="back-btn" onClick={() => setShowDownloadPage(false)}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M19 12H5M12 19l-7-7 7-7" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-            กลับ
-          </button>
+  const switchSong = (version: 'v1' | 'v2') => {
+    const audio = audioRef.current
+    if (!audio) return
 
-          <div className="download-header">
-            <h2 className="download-title">ดาวน์โหลดเพลง</h2>
-            <p className="download-subtitle">ป๋าเจโคตรเฟี้ยว - PJ</p>
-          </div>
+    const wasPlaying = isPlaying
+    if (wasPlaying) {
+      audio.pause()
+    }
 
-          <div className="hash-display-large">
-            <div className="hash-label">DATA HASH</div>
-            <div className="hash-value">{dataHash}</div>
-          </div>
+    setCurrentSong(version)
+    setCurrentTime(0)
+    setIsPlaying(false)
 
-          <button className="download-btn-large" onClick={handleDownload} disabled={isDownloading}>
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" strokeLinecap="round" strokeLinejoin="round"/>
-              <polyline points="7 10 12 15 17 10" strokeLinecap="round" strokeLinejoin="round"/>
-              <line x1="12" y1="15" x2="12" y2="3" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-            <span>{isDownloading ? `กำลังดาวน์โหลด ${downloadProgress}%` : 'ดาวน์โหลดเพลง'}</span>
-          </button>
-
-          {isDownloading && (
-            <div className="download-progress-container">
-              <div className="download-progress-bar">
-                <div 
-                  className="download-progress-fill" 
-                  style={{ width: `${downloadProgress}%` }}
-                ></div>
-              </div>
-              <div className="download-progress-text">{downloadProgress}%</div>
-            </div>
-          )}
-
-          <div className="download-info">
-            <div className="info-item">
-              <span className="info-label">ชื่อไฟล์:</span>
-              <span className="info-value">ป๋าเจโคตรเฟี้ยว.mp3</span>
-            </div>
-            <div className="info-item">
-              <span className="info-label">ประเภท:</span>
-              <span className="info-value">Thai Hip-Hop</span>
-            </div>
-            <div className="info-item">
-              <span className="info-label">ศิลปิน:</span>
-              <span className="info-value">PJ</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    )
+    // Wait for audio source to update
+    setTimeout(() => {
+      if (wasPlaying && audio) {
+        audio.play()
+        setIsPlaying(true)
+      }
+    }, 100)
   }
 
-  const fullLyrics = `ป๋าเจมาแล้วโว้ย ลงจากเบนซ์แบบแน่น
+  const songs = {
+    v1: {
+      title: 'ป๋าเจโคตรเฟี้ยว',
+      version: 'V1',
+      path: '/music/pjV1.mp3',
+      lyrics: 'เนื้อเพลงกำลัง update...\n\nกรุณารอติดตามในเวอร์ชันถัดไป'
+    },
+    v2: {
+      title: 'ป๋าเจโคตรเฟี้ยว',
+      version: 'V2',
+      path: '/music/pjV2.mp3',
+      lyrics: `ป๋าเจมาแล้วโว้ย ลงจากเบนซ์แบบแน่น
 เงินไม่ใช่ประเด็น ใจมันเท่กว่านั้นแหละ
 เดินเข้าผับที ไฟแทบดับเพราะสั่น
 ทุกคนหันมามอง แบบว่าใครวะ… หล่อจัดเกินปกมันส์
@@ -281,6 +254,76 @@ function App() {
 ใครเห็นก็ต้องเซ แค่เหล่มองก็ใจเต้น
 โอ้ ป๋าเจ ป๋าเจ จังหวะชีวิตมันเท่
 ใช้ชีวิตแบบจัดเต็ม ไม่มีเบรกนะเว้ย`
+    }
+  }
+
+  const currentSongData = songs[currentSong]
+
+  if (showDownloadPage) {
+    return (
+      <div className="app">
+        <div className="background-glow"></div>
+        <div className="music-player download-page">
+          <button className="back-btn" onClick={() => setShowDownloadPage(false)}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M19 12H5M12 19l-7-7 7-7" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            กลับ
+          </button>
+
+          <div className="download-header">
+            <h2 className="download-title">ดาวน์โหลดเพลง</h2>
+            <p className="download-subtitle">{currentSongData.title} {currentSongData.version} - PJ</p>
+          </div>
+
+          <div className="hash-display-large">
+            <div className="hash-label">DATA HASH</div>
+            <div className="hash-value">{dataHash}</div>
+          </div>
+
+          <button className="download-btn-large" onClick={handleDownload} disabled={isDownloading}>
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" strokeLinecap="round" strokeLinejoin="round"/>
+              <polyline points="7 10 12 15 17 10" strokeLinecap="round" strokeLinejoin="round"/>
+              <line x1="12" y1="15" x2="12" y2="3" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            <span>{isDownloading ? `กำลังดาวน์โหลด ${downloadProgress}%` : 'ดาวน์โหลดเพลง'}</span>
+          </button>
+
+          {isDownloading && (
+            <div className="download-progress-container">
+              <div className="download-progress-bar">
+                <div 
+                  className="download-progress-fill" 
+                  style={{ width: `${downloadProgress}%` }}
+                ></div>
+              </div>
+              <div className="download-progress-text">{downloadProgress}%</div>
+            </div>
+          )}
+
+          <div className="download-info">
+            <div className="info-item">
+              <span className="info-label">ชื่อไฟล์:</span>
+              <span className="info-value">{currentSongData.title} {currentSongData.version}.mp3</span>
+            </div>
+            <div className="info-item">
+              <span className="info-label">เวอร์ชัน:</span>
+              <span className="info-value">{currentSongData.version}</span>
+            </div>
+            <div className="info-item">
+              <span className="info-label">ประเภท:</span>
+              <span className="info-value">Thai Hip-Hop</span>
+            </div>
+            <div className="info-item">
+              <span className="info-label">ศิลปิน:</span>
+              <span className="info-value">PJ</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="app">
@@ -306,9 +349,24 @@ function App() {
         </div>
 
         <div className="song-info">
-          <h1 className="song-title">ป๋าเจโคตรเฟี้ยว</h1>
+          <h1 className="song-title">{currentSongData.title} {currentSongData.version}</h1>
           <p className="artist-name">PJ</p>
           <div className="genre-tag">Thai Hip-Hop</div>
+        </div>
+
+        <div className="song-selector">
+          <button 
+            className={`song-btn ${currentSong === 'v1' ? 'active' : ''}`}
+            onClick={() => switchSong('v1')}
+          >
+            V1
+          </button>
+          <button 
+            className={`song-btn ${currentSong === 'v2' ? 'active' : ''}`}
+            onClick={() => switchSong('v2')}
+          >
+            V2
+          </button>
         </div>
 
         <div className="progress-container">
@@ -391,12 +449,12 @@ function App() {
           ดาวน์โหลดเพลง
         </button>
 
-        <audio ref={audioRef} src="/music/pj.mp3" />
+        <audio ref={audioRef} src={currentSongData.path} preload="none" />
       </div>
 
       <div className={`lyrics-panel ${showLyrics ? 'open' : ''}`}>
         <div className="lyrics-panel-header">
-          <h3>เนื้อเพลง</h3>
+          <h3>เนื้อเพลง - {currentSongData.version}</h3>
           <button className="close-lyrics-btn" onClick={() => setShowLyrics(false)}>
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M18 6L6 18M6 6l12 12" strokeLinecap="round" strokeLinejoin="round"/>
@@ -404,7 +462,7 @@ function App() {
           </button>
         </div>
         <div className="lyrics-panel-content">
-          {fullLyrics.split('\n').map((line, index) => (
+          {currentSongData.lyrics.split('\n').map((line, index) => (
             <p key={index} className="lyric-line">{line || '\u00A0'}</p>
           ))}
         </div>
